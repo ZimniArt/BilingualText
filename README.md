@@ -6,3 +6,5 @@ The main goal is to help get acustomed to reading kanjis. Obviusly ther will be 
 To use it you need to adjust destination of the Font. (iom new to python so i m not sure how to get relatives paths) pdf.add_font("MPLUSRounded1c", "", r"D:\2_projects\7_simplePDF\MPLUSRounded1c-Medium.ttf")
 
 Maaybe, later i will fix some of this, probably will need to figure out mutlithread translation, because now file size of the 300 pages can take an hour to process.
+
+it can easily be modified to support any language conversion to any other language. But for now its only en-> japanese
