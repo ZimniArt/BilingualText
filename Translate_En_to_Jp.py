@@ -9,7 +9,7 @@ import os
  #parameters
 left_margin = 15
 cell_width = 180
-batch_size = 7   
+batch_size = 3   
 
 source_file = "input.txt"
 outputfile_name = "translated_text.pdf"
@@ -37,14 +37,22 @@ def pdf_setup():
 
     return pdf
 
-def get_next_pdf_filename(base_name="translated_text", folder=".", ext=".pdf"):
-    """Return the first available versioned filename like translated_text_v1.pdf"""
-    i = 1
-    while True:
-        filename = os.path.join(folder, f"{base_name}_v{i}{ext}")
-        if not os.path.exists(filename):
-            return filename
-        i += 1
+#the output can be only 1, so you cant put it in several places
+def save_pdf(): 
+        try:
+            pdf.output(outputfile_name)
+        except Exception as e:
+            print(f"file {outputfile_name} is unaccessible, failed to save, saving to backup: {e}")
+            try:
+                pdf.output("translated_text_backup.pdf")
+                print("PDF saved as backup")
+            except Exception as e2:
+                print(f"Failed to save backup PDF: {e2}")
+                try:
+                    pdf.output("translated_text_backup_1.pdf")
+                    print("PDF saved as backup 1.CLOSE ALL PDF!!!")
+                except Exception as e3:
+                    print(f"Failed to save backup PDF: {e3}")
 
 
 ABBREVIATIONS = [
@@ -91,8 +99,20 @@ def safe_batch_translate(batch, retries=3, delay=2.0):
             if attempt < retries - 1:
                 time.sleep(delay)
             else:
-                print(f"[ERROR] Batch failed permanently, will mark failed items.")
-                return [None] * len(batch)
+                while True:
+                    print("\nAll retries failed for this batch.")
+                    action = input("Enter 'r' to retry, 's' to skip batch, 'q' to save progress and quit: ").strip().lower()
+                    if action == 'r':
+                        return safe_batch_translate(batch, retries=retries, delay=delay)
+                    elif action == 's':
+                        return [None] * len(batch)  # skip batch
+                    elif action == 'q':
+                        save_pdf()
+                        raise SystemExit("User requested to quit, progress saved.")
+                    else:
+                        print("Invalid input. Please enter 'r', 's', or 'q'.")
+                        
+            
 
 kks = pykakasi.kakasi()
 
@@ -139,21 +159,8 @@ for batch in tqdm(list(batch_list(sentences, batch_size)), desc="Batches", unit=
         pdf.multi_cell(cell_width, 8, translated_text)
 
         pdf.ln(5)
+    
 
-try:
-    pdf.output(outputfile_name)
-except Exception as e:
-    print(f"file {outputfile_name} is unaccessible, failed to save, saving to backup: {e}")
-    try:
-        pdf.output("translated_text_backup.pdf")
-        print("PDF saved as backup")
-    except Exception as e2:
-        print(f"Failed to save backup PDF: {e2}")
-        try:
-            pdf.output("translated_text_backup_1.pdf")
-            print("PDF saved as backup 1.CLOSE ALL PDF!!!")
-        except Exception as e3:
-            print(f"Failed to save backup PDF: {e3}")
-
+save_pdf()
 
 print("\nPDF successfully created")
