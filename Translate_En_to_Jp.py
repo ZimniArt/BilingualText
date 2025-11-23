@@ -12,6 +12,7 @@ cell_width = 180
 batch_size = 7   
 
 source_file = "input.txt"
+outputfile_name = "translated_text.pdf"
 
 source_language = 'en'
 target_language = 'ja'
@@ -36,9 +37,43 @@ def pdf_setup():
 
     return pdf
 
+def get_next_pdf_filename(base_name="translated_text", folder=".", ext=".pdf"):
+    """Return the first available versioned filename like translated_text_v1.pdf"""
+    i = 1
+    while True:
+        filename = os.path.join(folder, f"{base_name}_v{i}{ext}")
+        if not os.path.exists(filename):
+            return filename
+        i += 1
+
+
+ABBREVIATIONS = [
+    "Mr", "Mrs", "Ms", "Dr", "Prof", "Sr", "Jr", "St",
+    "vs", "etc", "i.e", "e.g", "Fig", "fig"
+]
+
 def split_into_sentences(text):
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-    return [s for s in sentences if s]
+    # Normalize line breaks
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    text = re.sub(r'\n+', '\n', text)  # collapse multiple newlines
+
+    # Protect abbreviations
+    abbr_pattern = r'\b(' + '|'.join(ABBREVIATIONS) + r')\.'
+    text = re.sub(abbr_pattern, lambda m: m.group(0).replace('.', '<DOT>'), text)
+
+    # Protect numbered/bulleted lists like "1." or "a."
+    text = re.sub(r'(?<=\b\d|\b[a-zA-Z])\.', '<DOT>', text)
+
+    # Split on sentence-ending punctuation followed by whitespace or newline
+    sentences = re.split(r'(?<=[.!?])\s+|\n(?=[A-Z0-9])', text.strip())
+
+    # Restore dots
+    sentences = [s.replace('<DOT>', '.') for s in sentences if s.strip()]
+
+    # Strip extra whitespace
+    sentences = [s.strip() for s in sentences]
+
+    return sentences
 
 def batch_list(lst, batch_size):
     for i in range(0, len(lst), batch_size):
@@ -105,6 +140,15 @@ for batch in tqdm(list(batch_list(sentences, batch_size)), desc="Batches", unit=
 
         pdf.ln(5)
 
+try:
+    pdf.output(outputfile_name)
+except Exception as e:
+    print(f"file {outputfile_name} is unaccessible, failed to save, saving to backup: {e}")
+    try:
+        pdf.output("translated_text_backup.pdf")
+        print("PDF saved as backup")
+    except Exception as e2:
+        print(f"Failed to save backup PDF: {e2}")
 
-pdf.output("translated_text.pdf")
+
 print("\nPDF successfully created")
