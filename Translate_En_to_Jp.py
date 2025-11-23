@@ -4,6 +4,7 @@ import re
 from fpdf import FPDF
 from tqdm import tqdm
 import time
+import os
 
  #parameters
 left_margin = 15
@@ -17,8 +18,10 @@ target_language = 'ja'
 needs_furigana = True
 
 
-font_name ="MPLUSRounded1c"
-font_adress =r"D:\2_projects\8_git_bilingualPDF\MPLUSRounded1c-Medium.ttf"
+script_dir = os.path.dirname(__file__)  
+font_address = os.path.join(script_dir, "MPLUSRounded1c-Medium.ttf")
+font_name ="font_name"
+
 
 translator  = GoogleTranslator(source=source_language, target=target_language)
 
@@ -28,7 +31,7 @@ def pdf_setup():
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    pdf.add_font( font_name, "", font_adress)
+    pdf.add_font( font_name, "", font_address)
     pdf.set_font( font_name, style="", size=12)
 
     return pdf
@@ -86,19 +89,19 @@ for batch in tqdm(list(batch_list(sentences, batch_size)), desc="Batches", unit=
 
         # --- English ---
         pdf.set_x(left_margin)
-        pdf.set_font(font_name, size=12)
+        #pdf.set_font(font_name, size=12)
         pdf.multi_cell(cell_width, 8, sentence)
 
         # --- Furigana ---
         if furigana_text:
             pdf.set_x(left_margin)
-            pdf.set_font(font_name, size=9)
-            pdf.multi_cell(cell_width, 6, furigana_text)
+           # pdf.set_font(font_name, size=9)
+            pdf.multi_cell(cell_width, 8, furigana_text)
 
         # --- Japanese ---
         pdf.set_x(left_margin)
-        pdf.set_font(font_name, size=14)
-        pdf.multi_cell(cell_width, 10, translated_text)
+       # pdf.set_font(font_name, size=14)
+        pdf.multi_cell(cell_width, 8, translated_text)
 
         pdf.ln(5)
 
