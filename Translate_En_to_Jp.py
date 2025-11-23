@@ -5,9 +5,35 @@ from fpdf import FPDF
 from tqdm import tqdm
 import time
 
-kks = pykakasi.kakasi()
+ #parameters
+left_margin = 15
+cell_width = 180
+batch_size = 7   
 
-def split_sentence(text):
+source_file = "input.txt"
+
+source_language = 'en'
+target_language = 'ja'
+needs_furigana = True
+
+
+font_name ="MPLUSRounded1c"
+font_adress =r"D:\2_projects\8_git_bilingualPDF\MPLUSRounded1c-Medium.ttf"
+
+translator  = GoogleTranslator(source=source_language, target=target_language)
+
+def pdf_setup():
+    # PDF setup
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    pdf.add_font( font_name, "", font_adress)
+    pdf.set_font( font_name, style="", size=12)
+
+    return pdf
+
+def split_into_sentences(text):
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
     return [s for s in sentences if s]
 
@@ -15,11 +41,12 @@ def batch_list(lst, batch_size):
     for i in range(0, len(lst), batch_size):
         yield lst[i:i + batch_size]
 
+
 def safe_batch_translate(batch, retries=3, delay=2.0):
     """Translate a batch but never crash. Failed entries return None."""
     for attempt in range(retries):
         try:
-            result = GoogleTranslator(source='en', target='ja').translate_batch(batch)
+            result = translator.translate_batch(batch)
             # deep_translator sometimes returns list with None
             return [r if r else None for r in result]
         except Exception as e:
@@ -29,27 +56,15 @@ def safe_batch_translate(batch, retries=3, delay=2.0):
                 print(f"[ERROR] Batch failed permanently, will mark failed items.")
                 return [None] * len(batch)
 
-# ----------------------------------------------------
+kks = pykakasi.kakasi()
 
-with open("input.txt", "r", encoding="utf-8") as f:
-    english_text = f.read()
+with open(source_file, "r", encoding="utf-8") as f:
+    original_text = f.read()
 
-sentences = split_sentence(english_text)
+sentences = split_into_sentences(original_text)
 
-# PDF setup
-pdf = FPDF()
-pdf.add_page()
-pdf.set_auto_page_break(auto=True, margin=15)
-
-pdf.add_font("MPLUSRounded1c", "", r"D:\2_projects\7_simplePDF\MPLUSRounded1c-Medium.ttf")
-pdf.set_font("MPLUSRounded1c", style="", size=12)
-
-left_margin = 15
-cell_width = 180
-
-batch_size = 30   # ← adjust speed vs. stability
-
-# ----------------------------------------------------
+    
+pdf = pdf_setup()
 
 print("Starting batch translation...\n")
 
@@ -57,33 +72,36 @@ for batch in tqdm(list(batch_list(sentences, batch_size)), desc="Batches", unit=
     translated_batch = safe_batch_translate(batch)
 
     for sentence, jp in zip(batch, translated_batch):
-        
+    
         if jp is None:
-            japanese_text = "[Translation failed]"
-            furigana_text = ""
+            translated_text = "[Translation failed]"
         else:
-            japanese_text = jp
+            translated_text = jp
+
+        if needs_furigana and jp:
             result = kks.convert(jp)
             furigana_text = " ".join([item['hira'] for item in result])
+        else:
+            furigana_text = ""
 
         # --- English ---
         pdf.set_x(left_margin)
-        pdf.set_font("MPLUSRounded1c", size=12)
+        pdf.set_font(font_name, size=12)
         pdf.multi_cell(cell_width, 8, sentence)
 
         # --- Furigana ---
         if furigana_text:
             pdf.set_x(left_margin)
-            pdf.set_font("MPLUSRounded1c", size=9)
+            pdf.set_font(font_name, size=9)
             pdf.multi_cell(cell_width, 6, furigana_text)
 
         # --- Japanese ---
         pdf.set_x(left_margin)
-        pdf.set_font("MPLUSRounded1c", size=14)
-        pdf.multi_cell(cell_width, 10, japanese_text)
+        pdf.set_font(font_name, size=14)
+        pdf.multi_cell(cell_width, 10, translated_text)
 
         pdf.ln(5)
 
-# ----------------------------------------------------
+
 pdf.output("translated_text.pdf")
 print("\nPDF successfully created")
