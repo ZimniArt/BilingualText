@@ -149,6 +149,11 @@ except Exception as e:
         print("PDF saved as backup")
     except Exception as e2:
         print(f"Failed to save backup PDF: {e2}")
+        try:
+            pdf.output("translated_text_backup_1.pdf")
+            print("PDF saved as backup 1.CLOSE ALL PDF!!!")
+        except Exception as e3:
+            print(f"Failed to save backup PDF: {e3}")
 
 
 print("\nPDF successfully created")
